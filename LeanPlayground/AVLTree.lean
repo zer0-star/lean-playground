@@ -1,12 +1,12 @@
 import Mathlib.Data.Nat.Fib.Basic
-import Mathlib.Algebra.Order.GroupWithZero.Unbundled.Basic
-import Mathlib.Tactic.Linarith
 
+@[grind]
 inductive AVLTreeShape : Nat → Nat → Nat → Type
   | balanced :  AVLTreeShape n (n+1) n
   | leftHeavy : AVLTreeShape (n+1) (n+2) n
   | rightHeavy : AVLTreeShape n (n+2) (n+1)
 
+@[grind]
 inductive AVLTreeNode (α : Type) : Nat → Nat → Type
   | leaf : AVLTreeNode α 0 0
   | node {l : Nat} {n : Nat} {r : Nat} (v : α) (left : AVLTreeNode α l szl) (right : AVLTreeNode α r szr) (shape : AVLTreeShape l n r) : AVLTreeNode α n (szl+szr+1)
@@ -130,31 +130,19 @@ def min : AVLTreeNode α (n+1) sz → α
 
 theorem size_lower_bound {t : AVLTreeNode α n sz} : sz ≥ Nat.fib (n+1) - 1 := by
   induction t with
-  | leaf => simp [size]
+  | leaf => simp
   | node _ l r s ihl ihr =>
     cases s
     all_goals
       rename_i n _
-      simp [size]
       rw [Nat.fib_add_two]
       have := @Nat.fib_le_fib_succ n
       omega
 
-lemma pow_plus_pow_succ (n : Nat) : 2 ^ n + 2 ^ (n+1) ≤ 2 ^ (n+2) :=
-  calc _ ≤ 2 ^ (n+1) + 2 ^ (n+1) := Nat.add_le_add_right (pow_le_pow_right₀ (by trivial) (Nat.le_succ _)) _
-       _ = 2 ^ (n+1) * 2 := by rw [Nat.mul_two]
-       _ = 2 ^ (n+2) := by trivial
-
 theorem size_upper_bound {t : AVLTreeNode α n sz} : sz ≤ 2 ^ n - 1 := by
   induction t with
-  | leaf => simp [size]
-  | node _ l r s ihl ihr =>
-    cases s
-    all_goals
-      rename_i n _
-      have : 1 ≤ 2 ^ n := one_le_pow₀ (by trivial)
-      have := pow_plus_pow_succ n
-      omega
+  | leaf => simp
+  | node _ l r s ihl ihr => cases s <;> lia
 
 def splitMax (t : AVLTreeNode α (n+1) sz) : α × (AVLTreeNode' α n ⊕ AVLTreeNode' α (n+1)) :=
   match n, t with
@@ -264,6 +252,15 @@ def indexOf [Ord α] (t : AVLTreeNode α n sz) (x : α) : Nat :=
     | .eq => l.size
     | .gt => l.size + 1 + r.indexOf x
 
+protected def forIn [Monad m] (t : AVLTreeNode α n sz) (b : β) (f : α → β → m (ForInStep β)) : m β :=
+  ForInStep.run <$> go t b
+  where
+    go : ∀ {n' sz'}, AVLTreeNode α n' sz' → β → m (ForInStep β)
+      | _, _, leaf,         b => return ForInStep.yield b
+      | _, _, node v l r _, b =>
+        ForInStep.bindM (go l b) fun b => ForInStep.bindM (f v b) (go r ·)
+
+
 end AVLTreeNode
 
 structure AVLTree (α : Type) : Type where
@@ -331,5 +328,11 @@ instance [Ord α] : Insert α (AVLTree α) where
 
 instance [Ord α] : LawfulSingleton α (AVLTree α) where
   insert_empty_eq _ := rfl
+
+instance [Ord α] : Membership α (AVLTree α) where
+  mem t x := t.contains x
+
+instance [Monad m] : ForIn m (AVLTree α) α where
+  forIn t b f := t.root.forIn b f
 
 end AVLTree
