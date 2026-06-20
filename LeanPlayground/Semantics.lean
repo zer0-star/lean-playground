@@ -36,13 +36,13 @@ def state.update (s : state) (x : vname) (n : Nat) : state :=
 
 namespace Aexp
 
-@[simp]
+@[simp, grind =]
 lemma eval_num (s : state) (n : Nat) : (num n).eval s = n := rfl
 
-@[simp]
+@[simp, grind =]
 lemma eval_var (s : state) (x : vname) : (var x).eval s = s x := rfl
 
-@[simp]
+@[simp, grind =]
 lemma eval_plus (s : state) (a₁ a₂ : Aexp) : (plus a₁ a₂).eval s = a₁.eval s + a₂.eval s := rfl
 
 def simpConst : Aexp → Aexp
@@ -58,7 +58,7 @@ lemma eval_simpConst (a : Aexp) : a.simpConst.eval s = a.eval s := by
   | num n => rfl
   | var x => rfl
   | plus =>
-    simp [simpConst]
+    unfold simpConst
     split <;> simp_all
 
 def plus' : Aexp → Aexp → Aexp
@@ -67,9 +67,9 @@ def plus' : Aexp → Aexp → Aexp
   | a, num n => if n = 0 then a else plus a (num n)
   | a₁, a₂ => plus a₁ a₂
 
-@[simp]
+@[simp, grind =]
 lemma eval_plus' (s : state) (a₁ a₂ : Aexp) : (plus' a₁ a₂).eval s = a₁.eval s + a₂.eval s := by
-  simp [plus']
+  unfold plus'
   aesop
 
 def simp : Aexp → Aexp
@@ -77,7 +77,7 @@ def simp : Aexp → Aexp
   | var x => var x
   | plus a₁ a₂ => plus' (simp a₁) (simp a₂)
 
-@[simp]
+@[simp, grind =]
 theorem eval_simp (a : Aexp) : a.simp.eval s = a.eval s := by
   induction a with
   | num n => rfl
@@ -96,9 +96,10 @@ theorem optimal_simpConst (a : Aexp) : a.simpConst.optimal = true := by
   | num n => rfl
   | var x => rfl
   | plus a₁ a₂ ih₁ ih₂ =>
-    simp [simpConst]
+    unfold simpConst
     split <;> simp_all [optimal]
 
+@[simp, grind =]
 def fullSimp (a : Aexp) : Aexp :=
   let rec aux : Aexp → Nat × List vname
     | num m => (m, [])
@@ -110,13 +111,14 @@ def fullSimp (a : Aexp) : Aexp :=
   let (n, vs) := aux a
   vs.map var |>.foldl plus' (num n)
 
-lemma eval_sum (a : Aexp) (as : List Aexp) : (as.foldl plus' a).eval s = a.eval s + Nat.sum (as.map (eval s)) := by
+@[simp, grind =]
+lemma eval_sum (a : Aexp) (as : List Aexp) : (as.foldl plus' a).eval s = a.eval s + (as.map (eval s)).sum := by
   induction as generalizing a with
   | nil => rfl
   | cons a' as ih =>
-    simp_all [Nat.sum]
-    apply Nat.add_assoc
+    simp +arith [*]
 
+@[simp, grind =]
 theorem fullSimp_correct (a : Aexp) : a.fullSimp.eval s = a.eval s := by
   induction a with
   | num n => rfl
@@ -444,7 +446,7 @@ inductive small_step : Com → state → Com → state → Prop
 
 attribute [simp] small_step.assign small_step.seq1 small_step.seq2 small_step.if_true small_step.if_false small_step.while
 
-notation "(" c:55 ", " s:55 ") ⊢ (" c':55 ", " s':55 ")" => small_step c s c' s'
+notation "(" c:55 ", " s:55 ")" " ⊢ " "(" c':55 ", " s':55 ")" => small_step c s c' s'
 
 @[aesop 70%]
 inductive small_steps : Com → state → Com → state → Prop
@@ -453,7 +455,7 @@ inductive small_steps : Com → state → Com → state → Prop
 
 attribute [simp] small_steps.refl small_steps.step
 
-notation "(" c:55 ", " s:55 ") ⊢* (" c':55 ", " s':55 ")" => small_steps c s c' s'
+notation "(" c:55 ", " s:55 ")" " ⊢* " "(" c':55 ", " s':55 ")" => small_steps c s c' s'
 
 lemma small_steps.trans (h : (c, s) ⊢* (c', s')) (h' : (c', s') ⊢* (c'', s'')) : (c, s) ⊢* (c'', s'') := by
   induction h with
@@ -623,7 +625,8 @@ lemma not_assigned : x ∉ c.assigned → (c, s) ⊢ t → s x = t x := by
   | skip => rfl
   | assign =>
     simp_all [assigned, state.update]
-    split <;> simp_all
+    intros
+    solve_by_elim
   | seq h₁ h₂ ih₁ ih₂ =>
     simp_all [assigned]
   | if_true h h₁ ih =>
@@ -645,7 +648,7 @@ def like_skip : Com → Prop
 lemma equiv_like_skip : like_skip c → c ∼ .skip := by
   intro h
   induction c with
-  | skip => exact IsRefl.refl _
+  | skip => exact Std.Refl.refl _
   | assign => contradiction
   | seq c₁ c₂ ih₁ ih₂ =>
     simp_all [like_skip]

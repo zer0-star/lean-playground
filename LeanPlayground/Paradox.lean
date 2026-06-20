@@ -1,6 +1,8 @@
 -- Thierry Coquand. A variation of Reynolds-Hurkens Paradox.
 -- https://arxiv.org/abs/2308.16726
 
+namespace Paradox
+
 def P (X : Type u) := X → Prop
 def T (X : Type u) := P (P X)
 
@@ -47,7 +49,7 @@ theorem girard
   (lam : {A : Type u → Type u} → ((x : Type u) → A x) → pi A)
   (app : {A : Type u → Type u} → pi A → (x : Type u) → A x)
   (beta : ∀ {A : Type u → Type u} (f : (x : Type u) → A x) (x : Type u), app (lam f) x = f x)
-  : False := by
+  : False :=
   let A : Type u := pi (fun X => (T X → X) → X)
   let ι {X : Type u} (f : T X → X) (a : A) : X := app a X f
   let int (u : T A) : A := lam (fun X f => f (T.map (ι f) u))
@@ -56,4 +58,4 @@ theorem girard
     intro X
     simp_all [int, mat, ι]
     rfl
-  exact not_T_comm int mat int_mat
+  not_T_comm int mat int_mat

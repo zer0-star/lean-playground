@@ -1,3 +1,10 @@
--- This module serves as the root of the `LeanPlayground` library.
--- Import modules here that should be built as part of the library.
+import LeanPlayground.AVLTree
 import LeanPlayground.Basic
+import LeanPlayground.Bidirectional
+import LeanPlayground.Choice
+import LeanPlayground.Equality
+import LeanPlayground.Nat
+import LeanPlayground.Paradox
+import LeanPlayground.Segtree
+import LeanPlayground.Semantics
+import LeanPlayground.Universe

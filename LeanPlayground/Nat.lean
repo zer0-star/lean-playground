@@ -9,7 +9,7 @@ example : ∀ n : Fin 9, n^9 - n^3 ≡ 0 [MOD 9] := by
     simp
     decide
 
-#check inferInstanceAs (Monoid (Fin 100))
-#check inferInstanceAs (Pow (Fin 100) Nat)
+#check (inferInstance : Monoid (Fin 100))
+#check (inferInstance : Pow (Fin 100) Nat)
 
 #eval (3 : Fin 997) ^ 1000000000000

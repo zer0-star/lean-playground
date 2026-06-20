@@ -21,11 +21,12 @@ namespace Segtree
 
 variable {α : Type} [Monoid α]
 
-def mk (n : Nat) : Segtree α n := ⟨Vector.mkVector (n * 2) 1, by simp⟩
+def mk (n : Nat) : Segtree α n := ⟨Vector.replicate (n * 2) 1, by simp⟩
 
 private def updateAt (i : Nat) (data : Vector α (n * 2)) (h : i < n := by get_elem_tactic) : Vector α (n * 2) :=
   data.set i (data[i * 2] * data[i * 2 + 1])
 
+@[grind =]
 lemma updateAt_WF' (data : Vector α (n * 2)) (k : Nat) (hk : k < n) (hk' : 1 ≤ k) (h : WF' data (k + 1)) : WF' (updateAt k data) k := by
   intro i h'
   dsimp [updateAt]
@@ -38,8 +39,8 @@ lemma updateAt_WF' (data : Vector α (n * 2)) (k : Nat) (hk : k < n) (hk' : 1 �
     have : k ≠ i * 2 := by omega
     have : k ≠ i * 2 + 1 := by omega
     simp_all
-    apply h
-    omega
+    apply h <;> omega
+
 
 private def build' (data : Vector α (n * 2)) : Segtree α n :=
   let rec f (i : Nat) (data : Vector α (n * 2)) (hwf : WF' data (i + 1)) (h : i < n := by get_elem_tactic) : Segtree α n :=
@@ -47,21 +48,14 @@ private def build' (data : Vector α (n * 2)) : Segtree α n :=
       ⟨data, by simp_all⟩
     else
       let data' := updateAt i data
-      f (i - 1) data' <| by
-        have : i - 1 + 1 = i := by omega
-        simp_all
-        apply updateAt_WF'
-        omega
-        assumption
+      f (i - 1) data' <| by grind
   if _ : n = 0 then
     ⟨data, by simp_all⟩
   else
-    f (n - 1) data <| by
-      have : n - 1 + 1 = n := by omega
-      omega
+    f (n - 1) data <| by omega
 
 def build (data : Vector α n) : Segtree α n :=
-  build' <| Nat.mul_two n ▸ (Vector.mkVector n (1 : α) ++ data)
+  build' <| Nat.mul_two n ▸ (Vector.replicate n (1 : α) ++ data)
 
 def get (t : Segtree α n) (i : Fin n) : α := t.data[i + n]
 
@@ -123,11 +117,11 @@ def modify (t : Segtree α n) (i : Nat) (f : α → α) (h : i < n := by get_ele
   : Segtree α n :=
     t.set i (f t[i])
 
-@[simp]
+@[simp, grind =]
 lemma get_updateAt_ne (data : Vector α (n * 2)) (i j : Nat) (h : i < n) (h' : j < n * 2) (h'' : i ≠ j)
   : (updateAt i data)[j] = data[j] := by
-  dsimp [updateAt]
-  exact Vector.getElem_set_ne _ _ _ _ _ _ h''
+  apply Vector.getElem_set_ne
+  assumption
 
 @[simp]
 lemma buildAt_keep_larger (data : Vector α (n * 2)) (i : Nat) (hwf : WF_without data i) (h : i < n)
@@ -143,6 +137,7 @@ lemma buildAt_keep_larger (data : Vector α (n * 2)) (i : Nat) (hwf : WF_without
     rw [ih]
     simp only [data']
     rw [get_updateAt_ne]
+    omega
     omega
     omega
 

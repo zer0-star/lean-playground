@@ -2,6 +2,9 @@ import Mathlib.Tactic.Common
 import Mathlib.Data.Set.Basic
 import Mathlib.Data.Set.Image
 import Mathlib.Data.Quot
+import Mathlib.Data.Finite.Defs
+import Mathlib.Logic.IsEmpty.Basic
+
 
 
 #check Classical.em
@@ -41,11 +44,12 @@ theorem diaconescu (ac : axiom_of_choice) : ∀ p, p ∨ ¬p := by
   else
     right
     by_contra hp
-    have : g ⟦true⟧ = g ⟦false⟧ := by
+    have : x₁ = x₂ := by
+      unfold x₁ x₂
       congr 1
       apply Quotient.sound
       exact .inr hp
-    simp_all
+    contradiction
 
 #print axioms diaconescu
 
@@ -107,8 +111,7 @@ theorem diaconescu' (ac : axiom_of_choice') : ∀ p, p ∨ ¬p := by
 
 theorem ac_equiv : axiom_of_choice ↔ axiom_of_choice' := by
   constructor
-  . intro ac
-    intro α β h
+  . intro ac α β h
     let f (p : Σ x, β x) := p.fst
     have f_Surjective : f.Surjective := by
       intro x
@@ -120,15 +123,55 @@ theorem ac_equiv : axiom_of_choice ↔ axiom_of_choice' := by
       assumption
     have g' x := this x ▸ (g x).snd
     exact ⟨g'⟩
-  . intro ac'
-    intro α β f hf
+  . intro ac' α β f hf
     have hf' (y : β) : Nonempty (Σ' x : α, f x = y) := by
       obtain ⟨x, hx⟩ := hf y
       exact ⟨⟨x, hx⟩⟩
     obtain ⟨g'⟩ := ac' hf'
     let g (y : β) := (g' y).fst
     have hg (y : β) : f (g y) = y := by
+      unfold g
       simp [(g' y).snd]
     exact ⟨g, hg⟩
 
 
+#print axioms ac_equiv
+
+abbrev global_choice := ∀ {α : Type}, Nonempty α → α
+
+theorem choice_implies_ac (gc : global_choice) : axiom_of_choice := by
+  intro α β f hf
+  let g' (y : β) := nonempty_subtype.mpr (hf y) |> gc
+  let g (y : β) := (g' y).val
+  have hg (y : β) : f (g y) = y := by
+    unfold g
+    exact (g' y).property
+  exists g
+
+theorem finite_choice {α : Type} {β : α → Type} [Finite α] (h : ∀ x : α, Nonempty (β x)) : Nonempty (∀ x : α, β x) := by
+  obtain ⟨n, hn⟩ := finite_iff_exists_equiv_fin.mp (inferInstance : Finite α)
+  obtain ⟨hn⟩ := hn
+  have h i := h (hn.symm i)
+  suffices Nonempty (∀ i : Fin n, β (hn.symm i)) by
+    obtain ⟨g⟩ := this
+    apply Nonempty.intro
+    intro x
+    have y := g (hn x)
+    rw [hn.left_inv'] at y
+    exact y
+  generalize ⇑hn.symm = f at *
+  clear hn
+  induction n with
+  | zero => use IsEmpty.elim (inferInstance : IsEmpty (Fin 0))
+  | succ n ih =>
+    specialize ih (f ∘ Fin.succ)
+    specialize ih (fun i => h (Fin.succ i))
+    obtain ⟨ih⟩ := ih
+    obtain ⟨x⟩ := h 0
+    apply Nonempty.intro
+    intro i
+    cases i using Fin.cases with
+    | zero => exact x
+    | succ i => exact ih i
+
+#print axioms finite_choice

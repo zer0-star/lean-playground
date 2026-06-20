@@ -124,3 +124,20 @@ example (n : Nat) : (n + 1) / 2 = (if n % 2 = 1 then n + 1 else n) / 2 := by
 
 example (n : Nat) : n / 2 = (if n % 2 = 1 then n - 1 else n) / 2 := by
   split <;> omega
+
+structure ListBuilder (α : Type u) where
+  data : List α
+
+def ListBuilder.cons (x : α) (xs : ListBuilder α) : ListBuilder α :=
+  ⟨x :: xs.data⟩
+
+instance : CoeFun (ListBuilder α) (fun _ => α → ListBuilder α) where
+  coe f := f.cons
+
+instance : Coe (ListBuilder α) (List α) where
+  coe b := b.data.reverse
+
+def listOf : ListBuilder α := ⟨[]⟩
+
+#eval (listOf 1 2 3   : List Nat)
+#eval (listOf 1 2 3 4 : List Nat)
